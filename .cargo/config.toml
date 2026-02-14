@@ -1,0 +1,3 @@
+[term]
+# Suppress future-incompatibility warnings in output
+quiet = false
