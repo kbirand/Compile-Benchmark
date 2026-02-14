@@ -15,7 +15,9 @@ This project simulates a real-world web application with common dependencies to 
 - **CLI** (Clap) - Command-line argument parsing with derive macros
 - **Templating** (Tera) - HTML template rendering
 - **Validation** (Validator) - Input validation with derive macros
-- And many more common production dependencies...
+- And 120+ more real-world dependencies...
+
+See **[DEPENDENCIES.md](DEPENDENCIES.md)** for the complete list of all crates organized by category.
 
 ## Prerequisites
 
@@ -37,32 +39,22 @@ cargo --version
 
 ## Running the Benchmark
 
-### Clean Build (Full Benchmark)
-
-This measures the complete compile time from scratch:
-
 **Windows (PowerShell):**
 ```powershell
-cd compile-benchmark
-cargo clean
-Measure-Command { cargo build --release 2>&1 | Out-Default }
+.\benchmark.ps1
 ```
 
 **macOS/Linux:**
 ```bash
-cd compile-benchmark
-cargo clean
-time cargo build --release
+chmod +x benchmark.sh
+./benchmark.sh
 ```
 
-### Quick Build (Debug Mode)
-
-For faster iteration during testing:
-
-```bash
-cargo clean
-time cargo build
-```
+The scripts will:
+- Check/install Rust if needed
+- Run clean debug and release builds
+- Measure and display compile times
+- Save results to `benchmark-results.txt`
 
 ## Expected Compile Times
 
@@ -73,21 +65,6 @@ time cargo build
 | Older Hardware | 3-5 min | 6-10 min |
 
 *Times vary based on CPU, RAM, and disk speed.*
-
-## Benchmark Script
-
-For consistent benchmarking, use the provided scripts:
-
-**Windows (benchmark.ps1):**
-```powershell
-.\benchmark.ps1
-```
-
-**macOS/Linux (benchmark.sh):**
-```bash
-chmod +x benchmark.sh
-./benchmark.sh
-```
 
 ## What's Being Compiled
 
@@ -127,20 +104,6 @@ src/
     └── ...
 ```
 
-## Adjusting Compile Time
-
-If you need longer/shorter compile times:
-
-### Increase Compile Time
-- Add more dependencies in `Cargo.toml`
-- Enable more feature flags
-- Add more modules with derive macros
-
-### Decrease Compile Time
-- Remove some dependencies
-- Use `cargo build` instead of `cargo build --release`
-- Reduce feature flags
-
 ## Tips for Accurate Benchmarking
 
 1. **Close other applications** - Especially browsers and IDEs
@@ -170,4 +133,10 @@ Or run it (it will start a web server):
 
 ## License
 
-MIT - Use freely for benchmarking purposes.
+MIT License with Attribution Requirement
+
+Free to use for benchmarking purposes. **If sharing results on social media, blogs, or publications, please credit:**
+
+```
+Benchmark: github.com/kbirand/Compile-Benchmark
+```
