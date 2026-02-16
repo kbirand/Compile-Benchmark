@@ -1,8 +1,10 @@
 {
-  "timestamp": "2026-02-16T16:23:23Z",
+  "timestamp": "2026-02-16T17:57:05Z",
   "system": {
+    "device": "Mac Studio",
     "os": "macOS 26.2",
     "cpu": "Apple M1 Ultra",
+    "gpu": "Apple M1 Ultra",
     "cores": 20,
     "ram_gb": 128
   },
@@ -12,15 +14,15 @@
   },
   "results": {
     "debug": {
-      "time_seconds": 131.962892000,
+      "time_seconds": 90.803391000,
       "avg_power": "N/A",
       "energy": "N/A"
     },
     "release": {
-      "time_seconds": 129.755912000,
+      "time_seconds": 114.021020000,
       "avg_power": "N/A",
       "energy": "N/A"
     }
   },
-  "power_monitoring_enabled": true
+  "power_monitoring_enabled": false
 }
