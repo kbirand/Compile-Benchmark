@@ -194,6 +194,9 @@ check_linux_build_deps() {
     if ! dpkg -s libssl-dev &>/dev/null 2>&1; then
         missing+=(libssl-dev)
     fi
+    if ! dpkg -s libasound2-dev &>/dev/null 2>&1; then
+        missing+=(libasound2-dev)
+    fi
     if ! command -v pkg-config &>/dev/null; then
         missing+=(pkg-config)
     fi
