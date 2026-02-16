@@ -102,11 +102,12 @@ Write-Host "System Information:" -ForegroundColor Yellow
 $csModel = (Get-CimInstance Win32_ComputerSystem).Model
 if (-not $csModel -or $csModel -match 'System Product Name|To Be Filled|Default string') {
     $board = Get-CimInstance Win32_BaseBoard
-    $csModel = "$($board.Manufacturer) $($board.Product)".Trim()
+    $mfr = $board.Manufacturer -replace '(?i)ASUSTeK COMPUTER INC\.?','ASUS' -replace '(?i)Micro-Star International.*','MSI' -replace '(?i)Gigabyte Technology.*','Gigabyte'
+    $csModel = "$mfr $($board.Product)".Trim()
 }
 Write-Host "  Device: $csModel"
 Write-Host "  OS: $([System.Environment]::OSVersion.VersionString)"
-Write-Host "  CPU: $((Get-CimInstance Win32_Processor).Name)"
+Write-Host "  CPU: $((Get-CimInstance Win32_Processor).Name.Trim())"
 $gpus = Get-CimInstance Win32_VideoController
 $discreteGpu = $gpus | Where-Object { $_.Name -notmatch 'Microsoft Basic|Radeon.*Graphics$' } | Select-Object -First 1
 if ($discreteGpu) { $gpuName = $discreteGpu.Name } else { $gpuName = ($gpus | Select-Object -First 1).Name }
@@ -210,12 +211,13 @@ function Send-BenchmarkResults {
     $sysModel = (Get-CimInstance Win32_ComputerSystem).Model
     if (-not $sysModel -or $sysModel -match 'System Product Name|To Be Filled|Default string') {
         $board = Get-CimInstance Win32_BaseBoard
-        $sysDevice = "$($board.Manufacturer) $($board.Product)".Trim()
+        $mfr = $board.Manufacturer -replace '(?i)ASUSTeK COMPUTER INC\.?','ASUS' -replace '(?i)Micro-Star International.*','MSI' -replace '(?i)Gigabyte Technology.*','Gigabyte'
+        $sysDevice = "$mfr $($board.Product)".Trim()
     } else {
         $sysDevice = $sysModel
     }
     $sysOS = [System.Environment]::OSVersion.VersionString
-    $sysCPU = (Get-CimInstance Win32_Processor).Name
+    $sysCPU = (Get-CimInstance Win32_Processor).Name.Trim()
     $gpuList = Get-CimInstance Win32_VideoController
     $discrete = $gpuList | Where-Object { $_.Name -notmatch 'Microsoft Basic|Radeon.*Graphics$' } | Select-Object -First 1
     if ($discrete) { $sysGPU = $discrete.Name } else { $sysGPU = ($gpuList | Select-Object -First 1).Name }

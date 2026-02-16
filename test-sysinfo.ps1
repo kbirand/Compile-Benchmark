@@ -15,8 +15,11 @@ try {
     Write-Host "  Raw Model: '$device'"
     if (-not $device -or $device -match 'System Product Name|To Be Filled|Default string') {
         $board = Get-CimInstance Win32_BaseBoard
-        $device = "$($board.Manufacturer) $($board.Product)".Trim()
-        Write-Host "  Fallback to motherboard: '$device'"
+        Write-Host "  Raw Manufacturer: '$($board.Manufacturer)'"
+        Write-Host "  Raw Product: '$($board.Product)'"
+        $mfr = $board.Manufacturer -replace '(?i)ASUSTeK COMPUTER INC\.?','ASUS' -replace '(?i)Micro-Star International.*','MSI' -replace '(?i)Gigabyte Technology.*','Gigabyte'
+        $device = "$mfr $($board.Product)".Trim()
+        Write-Host "  Cleaned up: '$device'"
     }
     Write-Host "  Value: '$device'"
     if ($device) { Write-Host "  Status: OK" -ForegroundColor Green } else { Write-Host "  Status: FAILED" -ForegroundColor Red }
@@ -39,7 +42,7 @@ Write-Host ""
 # CPU
 Write-Host "CPU:" -ForegroundColor Yellow
 try {
-    $cpu = (Get-CimInstance Win32_Processor).Name
+    $cpu = (Get-CimInstance Win32_Processor).Name.Trim()
     Write-Host "  Value: '$cpu'"
     if ($cpu) { Write-Host "  Status: OK" -ForegroundColor Green } else { Write-Host "  Status: FAILED" -ForegroundColor Red }
 } catch {
