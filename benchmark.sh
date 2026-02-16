@@ -190,16 +190,14 @@ check_linux_build_deps() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         return
     fi
+    # All native -dev packages required by crates in Cargo.toml
+    local required_pkgs=(pkg-config libssl-dev libasound2-dev libudev-dev libsqlite3-dev)
     local missing=()
-    if ! dpkg -s libssl-dev &>/dev/null 2>&1; then
-        missing+=(libssl-dev)
-    fi
-    if ! dpkg -s libasound2-dev &>/dev/null 2>&1; then
-        missing+=(libasound2-dev)
-    fi
-    if ! command -v pkg-config &>/dev/null; then
-        missing+=(pkg-config)
-    fi
+    for pkg in "${required_pkgs[@]}"; do
+        if ! dpkg -s "$pkg" &>/dev/null 2>&1; then
+            missing+=("$pkg")
+        fi
+    done
     if [[ ${#missing[@]} -gt 0 ]]; then
         echo "Installing missing build dependencies: ${missing[*]}..."
         if [[ $EUID -eq 0 ]]; then
