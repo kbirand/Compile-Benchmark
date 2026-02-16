@@ -99,8 +99,10 @@ Write-Host ""
 
 # Get system info
 Write-Host "System Information:" -ForegroundColor Yellow
+Write-Host "  Device: $((Get-CimInstance Win32_ComputerSystem).Model)"
 Write-Host "  OS: $([System.Environment]::OSVersion.VersionString)"
 Write-Host "  CPU: $((Get-CimInstance Win32_Processor).Name)"
+Write-Host "  GPU: $((Get-CimInstance Win32_VideoController | Select-Object -First 1).Name)"
 Write-Host "  Cores: $([System.Environment]::ProcessorCount)"
 Write-Host "  RAM: $([math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)) GB"
 Write-Host ""
@@ -171,8 +173,10 @@ Compile Benchmark Results
 Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 
 System:
+  Device: $((Get-CimInstance Win32_ComputerSystem).Model)
   OS: $([System.Environment]::OSVersion.VersionString)
   CPU: $((Get-CimInstance Win32_Processor).Name)
+  GPU: $((Get-CimInstance Win32_VideoController | Select-Object -First 1).Name)
   Cores: $([System.Environment]::ProcessorCount)
   RAM: $([math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)) GB
 
@@ -187,3 +191,77 @@ Results:
 
 $results | Out-File -FilePath "benchmark-results.txt" -Encoding UTF8
 Write-Host "Results saved to benchmark-results.txt" -ForegroundColor Gray
+
+# Send results to endpoint
+$BenchmarkApiUrl = (Get-Content "$PSScriptRoot\benchmark-config.cfg" -First 1).Trim()
+
+function Send-BenchmarkResults {
+    Write-Host ""
+    Write-Host "Sending results to $BenchmarkApiUrl..." -ForegroundColor Yellow
+
+    $sysDevice = (Get-CimInstance Win32_ComputerSystem).Model
+    $sysOS = [System.Environment]::OSVersion.VersionString
+    $sysCPU = (Get-CimInstance Win32_Processor).Name
+    $sysGPU = (Get-CimInstance Win32_VideoController | Select-Object -First 1).Name
+    $sysCores = [System.Environment]::ProcessorCount
+    $sysRAM = [math]::Floor((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
+
+    $payload = @{
+        timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        system = @{
+            device = $sysDevice
+            os = $sysOS
+            cpu = $sysCPU
+            gpu = $sysGPU
+            cores = $sysCores
+            ram_gb = $sysRAM
+        }
+        rust = @{
+            rustc = (rustc --version) -join ""
+            cargo = (cargo --version) -join ""
+        }
+        results = @{
+            debug = @{
+                time_seconds = [math]::Round($debugTime.TotalSeconds, 3)
+                avg_power = "N/A"
+                energy = "N/A"
+            }
+            release = @{
+                time_seconds = [math]::Round($releaseTime.TotalSeconds, 3)
+                avg_power = "N/A"
+                energy = "N/A"
+            }
+        }
+        power_monitoring_enabled = $false
+    } | ConvertTo-Json -Depth 4
+
+    # Save JSON to file
+    $payload | Out-File -FilePath "benchmark-results.json" -Encoding UTF8
+    Write-Host "Results saved to benchmark-results.json" -ForegroundColor Gray
+
+    try {
+        $response = Invoke-WebRequest -Uri $BenchmarkApiUrl `
+            -Method Post `
+            -ContentType "application/json" `
+            -Body $payload `
+            -TimeoutSec 30 `
+            -UseBasicParsing `
+            -ErrorAction Stop
+
+        Write-Host "Results sent successfully! (HTTP $($response.StatusCode))" -ForegroundColor Green
+    } catch {
+        $statusCode = $null
+        if ($_.Exception.Response) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+        }
+
+        if ($statusCode) {
+            Write-Host "WARNING: Server responded with HTTP $statusCode" -ForegroundColor Red
+        } else {
+            Write-Host "WARNING: Could not connect to $BenchmarkApiUrl" -ForegroundColor Red
+            Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+}
+
+Send-BenchmarkResults

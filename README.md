@@ -54,7 +54,7 @@ The scripts will:
 - Check/install Rust if needed
 - Run clean debug and release builds
 - Measure and display compile times
-- Save results to `benchmark-results.txt`
+- Save results to `benchmark-results.txt` and `benchmark-results.json`
 
 ## Expected Compile Times
 
@@ -130,6 +130,47 @@ Or run it (it will start a web server):
 ```bash
 ./target/release/compile-benchmark --port 8080
 ```
+
+## Result Reporting
+
+After the benchmark completes, results are automatically sent as a **JSON POST** request to the configured endpoint. Both scripts (`benchmark.sh` and `benchmark.ps1`) send the same payload format.
+
+To change the endpoint, edit the URL in `benchmark-config.cfg` — both scripts read from this single file.
+
+### Payload
+
+```json
+{
+  "timestamp": "2026-02-16T16:00:00Z",
+  "system": {
+    "device": "Mac Studio",
+    "os": "macOS 15.3",
+    "cpu": "Apple M2 Pro",
+    "gpu": "Apple M2 Pro",
+    "cores": 12,
+    "ram_gb": 32
+  },
+  "rust": {
+    "rustc": "rustc 1.84.1 (e71f9a9a9 2025-01-27)",
+    "cargo": "cargo 1.84.1 (66221abde 2025-01-22)"
+  },
+  "results": {
+    "debug": {
+      "time_seconds": 58.123,
+      "avg_power": "12.5W",
+      "energy": "0.20Wh"
+    },
+    "release": {
+      "time_seconds": 112.456,
+      "avg_power": "15.3W",
+      "energy": "0.48Wh"
+    }
+  },
+  "power_monitoring_enabled": true
+}
+```
+
+> **Note:** `avg_power` and `energy` will be `"N/A"` if power monitoring is not available or the script is not run with `sudo`.
 
 ## License
 

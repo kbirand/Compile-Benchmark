@@ -248,13 +248,17 @@ echo ""
 # Get system info
 echo "System Information:"
 if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "  Device: $(system_profiler SPHardwareDataType | grep 'Model Name' | cut -d':' -f2 | xargs)"
     echo "  OS: macOS $(sw_vers -productVersion)"
     echo "  CPU: $(sysctl -n machdep.cpu.brand_string)"
+    echo "  GPU: $(system_profiler SPDisplaysDataType | grep 'Chipset Model' | cut -d':' -f2 | xargs)"
     echo "  Cores: $(sysctl -n hw.ncpu)"
     echo "  RAM: $(( $(sysctl -n hw.memsize) / 1073741824 )) GB"
 else
+    echo "  Device: $(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || echo 'Unknown')"
     echo "  OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
     echo "  CPU: $(cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | xargs)"
+    echo "  GPU: $(lspci 2>/dev/null | grep -i 'vga\|3d\|display' | head -1 | cut -d':' -f3 | xargs || echo 'Unknown')"
     echo "  Cores: $(nproc)"
     echo "  RAM: $(( $(cat /proc/meminfo | grep MemTotal | awk '{print $2}') / 1048576 )) GB"
 fi
@@ -366,13 +370,17 @@ Date: $(date '+%Y-%m-%d %H:%M:%S')
 
 System:
 $(if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "  Device: $(system_profiler SPHardwareDataType | grep 'Model Name' | cut -d':' -f2 | xargs)"
     echo "  OS: macOS $(sw_vers -productVersion)"
     echo "  CPU: $(sysctl -n machdep.cpu.brand_string)"
+    echo "  GPU: $(system_profiler SPDisplaysDataType | grep 'Chipset Model' | cut -d':' -f2 | xargs)"
     echo "  Cores: $(sysctl -n hw.ncpu)"
     echo "  RAM: $(( $(sysctl -n hw.memsize) / 1073741824 )) GB"
 else
+    echo "  Device: $(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || echo 'Unknown')"
     echo "  OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
     echo "  CPU: $(cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | xargs)"
+    echo "  GPU: $(lspci 2>/dev/null | grep -i 'vga\|3d\|display' | head -1 | cut -d':' -f3 | xargs || echo 'Unknown')"
     echo "  Cores: $(nproc)"
     echo "  RAM: $(( $(cat /proc/meminfo | grep MemTotal | awk '{print $2}') / 1048576 )) GB"
 fi)
@@ -396,3 +404,89 @@ Power Monitoring: $(if [[ "$POWER_AVAILABLE" == "true" ]]; then echo "Enabled"; 
 EOF
 
 echo "Results saved to benchmark-results.txt"
+
+# Send results to endpoint
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BENCHMARK_API_URL="$(head -1 "$SCRIPT_DIR/benchmark-config.cfg" | tr -d '[:space:]')"
+
+send_results_to_endpoint() {
+    echo ""
+    echo "Sending results to ${BENCHMARK_API_URL}..."
+
+    # Collect system info
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        SYS_DEVICE="$(system_profiler SPHardwareDataType | grep 'Model Name' | cut -d':' -f2 | xargs)"
+        SYS_OS="macOS $(sw_vers -productVersion)"
+        SYS_CPU="$(sysctl -n machdep.cpu.brand_string)"
+        SYS_GPU="$(system_profiler SPDisplaysDataType | grep 'Chipset Model' | cut -d':' -f2 | xargs)"
+        SYS_CORES="$(sysctl -n hw.ncpu)"
+        SYS_RAM="$(( $(sysctl -n hw.memsize) / 1073741824 ))"
+    else
+        SYS_DEVICE="$(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || echo 'Unknown')"
+        SYS_OS="$(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
+        SYS_CPU="$(cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | xargs)"
+        SYS_GPU="$(lspci 2>/dev/null | grep -i 'vga\|3d\|display' | head -1 | cut -d':' -f3 | xargs || echo 'Unknown')"
+        SYS_CORES="$(nproc)"
+        SYS_RAM="$(( $(cat /proc/meminfo | grep MemTotal | awk '{print $2}') / 1048576 ))"
+    fi
+
+    # Build JSON payload
+    JSON_PAYLOAD=$(cat <<EOJSON
+{
+  "timestamp": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
+  "system": {
+    "device": "${SYS_DEVICE}",
+    "os": "${SYS_OS}",
+    "cpu": "${SYS_CPU}",
+    "gpu": "${SYS_GPU}",
+    "cores": ${SYS_CORES},
+    "ram_gb": ${SYS_RAM}
+  },
+  "rust": {
+    "rustc": "$(rustc --version)",
+    "cargo": "$(cargo --version)"
+  },
+  "results": {
+    "debug": {
+      "time_seconds": ${DEBUG_TIME},
+      "avg_power": "${DEBUG_POWER}",
+      "energy": "${DEBUG_ENERGY}"
+    },
+    "release": {
+      "time_seconds": ${RELEASE_TIME},
+      "avg_power": "${RELEASE_POWER}",
+      "energy": "${RELEASE_ENERGY}"
+    }
+  },
+  "power_monitoring_enabled": $(if [[ "$POWER_AVAILABLE" == "true" ]]; then echo "true"; else echo "false"; fi)
+}
+EOJSON
+)
+
+    # Save JSON to file
+    echo "$JSON_PAYLOAD" > benchmark-results.json
+    echo "Results saved to benchmark-results.json"
+
+    # Send via curl with timeout
+    HTTP_STATUS=$(curl -s -o /tmp/benchmark_response_$$.txt -w "%{http_code}" \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -d "$JSON_PAYLOAD" \
+        --connect-timeout 10 \
+        --max-time 30 \
+        "$BENCHMARK_API_URL" 2>&1) || true
+
+    if [[ "$HTTP_STATUS" =~ ^2[0-9][0-9]$ ]]; then
+        echo "Results sent successfully! (HTTP ${HTTP_STATUS})"
+    elif [[ -z "$HTTP_STATUS" || "$HTTP_STATUS" == "000" ]]; then
+        echo "WARNING: Could not connect to ${BENCHMARK_API_URL}"
+    else
+        echo "WARNING: Server responded with HTTP ${HTTP_STATUS}"
+        if [[ -f /tmp/benchmark_response_$$.txt ]]; then
+            echo "  Response: $(cat /tmp/benchmark_response_$$.txt)"
+        fi
+    fi
+    rm -f /tmp/benchmark_response_$$.txt
+}
+
+send_results_to_endpoint

@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-02-16T16:23:23Z",
+  "system": {
+    "os": "macOS 26.2",
+    "cpu": "Apple M1 Ultra",
+    "cores": 20,
+    "ram_gb": 128
+  },
+  "rust": {
+    "rustc": "rustc 1.93.1 (01f6ddf75 2026-02-11)",
+    "cargo": "cargo 1.93.1 (083ac5135 2025-12-15)"
+  },
+  "results": {
+    "debug": {
+      "time_seconds": 131.962892000,
+      "avg_power": "N/A",
+      "energy": "N/A"
+    },
+    "release": {
+      "time_seconds": 129.755912000,
+      "avg_power": "N/A",
+      "energy": "N/A"
+    }
+  },
+  "power_monitoring_enabled": true
+}
