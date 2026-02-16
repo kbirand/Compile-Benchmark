@@ -99,10 +99,18 @@ Write-Host ""
 
 # Get system info
 Write-Host "System Information:" -ForegroundColor Yellow
-Write-Host "  Device: $((Get-CimInstance Win32_ComputerSystem).Model)"
+$csModel = (Get-CimInstance Win32_ComputerSystem).Model
+if (-not $csModel -or $csModel -match 'System Product Name|To Be Filled|Default string') {
+    $board = Get-CimInstance Win32_BaseBoard
+    $csModel = "$($board.Manufacturer) $($board.Product)".Trim()
+}
+Write-Host "  Device: $csModel"
 Write-Host "  OS: $([System.Environment]::OSVersion.VersionString)"
 Write-Host "  CPU: $((Get-CimInstance Win32_Processor).Name)"
-Write-Host "  GPU: $((Get-CimInstance Win32_VideoController | Select-Object -First 1).Name)"
+$gpus = Get-CimInstance Win32_VideoController
+$discreteGpu = $gpus | Where-Object { $_.Name -notmatch 'Microsoft Basic|Radeon.*Graphics$' } | Select-Object -First 1
+if ($discreteGpu) { $gpuName = $discreteGpu.Name } else { $gpuName = ($gpus | Select-Object -First 1).Name }
+Write-Host "  GPU: $gpuName"
 Write-Host "  Cores: $([System.Environment]::ProcessorCount)"
 Write-Host "  RAM: $([math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)) GB"
 Write-Host ""
@@ -173,10 +181,10 @@ Compile Benchmark Results
 Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 
 System:
-  Device: $((Get-CimInstance Win32_ComputerSystem).Model)
+  Device: $csModel
   OS: $([System.Environment]::OSVersion.VersionString)
   CPU: $((Get-CimInstance Win32_Processor).Name)
-  GPU: $((Get-CimInstance Win32_VideoController | Select-Object -First 1).Name)
+  GPU: $gpuName
   Cores: $([System.Environment]::ProcessorCount)
   RAM: $([math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)) GB
 
@@ -199,10 +207,18 @@ function Send-BenchmarkResults {
     Write-Host ""
     Write-Host "Sending results to $BenchmarkApiUrl..." -ForegroundColor Yellow
 
-    $sysDevice = (Get-CimInstance Win32_ComputerSystem).Model
+    $sysModel = (Get-CimInstance Win32_ComputerSystem).Model
+    if (-not $sysModel -or $sysModel -match 'System Product Name|To Be Filled|Default string') {
+        $board = Get-CimInstance Win32_BaseBoard
+        $sysDevice = "$($board.Manufacturer) $($board.Product)".Trim()
+    } else {
+        $sysDevice = $sysModel
+    }
     $sysOS = [System.Environment]::OSVersion.VersionString
     $sysCPU = (Get-CimInstance Win32_Processor).Name
-    $sysGPU = (Get-CimInstance Win32_VideoController | Select-Object -First 1).Name
+    $gpuList = Get-CimInstance Win32_VideoController
+    $discrete = $gpuList | Where-Object { $_.Name -notmatch 'Microsoft Basic|Radeon.*Graphics$' } | Select-Object -First 1
+    if ($discrete) { $sysGPU = $discrete.Name } else { $sysGPU = ($gpuList | Select-Object -First 1).Name }
     $sysCores = [System.Environment]::ProcessorCount
     $sysRAM = [math]::Floor((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
 

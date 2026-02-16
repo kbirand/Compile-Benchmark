@@ -12,6 +12,12 @@ Write-Host ""
 Write-Host "Device:" -ForegroundColor Yellow
 try {
     $device = (Get-CimInstance Win32_ComputerSystem).Model
+    Write-Host "  Raw Model: '$device'"
+    if (-not $device -or $device -match 'System Product Name|To Be Filled|Default string') {
+        $board = Get-CimInstance Win32_BaseBoard
+        $device = "$($board.Manufacturer) $($board.Product)".Trim()
+        Write-Host "  Fallback to motherboard: '$device'"
+    }
     Write-Host "  Value: '$device'"
     if ($device) { Write-Host "  Status: OK" -ForegroundColor Green } else { Write-Host "  Status: FAILED" -ForegroundColor Red }
 } catch {
@@ -44,8 +50,12 @@ Write-Host ""
 # GPU
 Write-Host "GPU:" -ForegroundColor Yellow
 try {
-    $gpu = (Get-CimInstance Win32_VideoController | Select-Object -First 1).Name
-    Write-Host "  Value: '$gpu'"
+    $gpus = Get-CimInstance Win32_VideoController
+    Write-Host "  All GPUs found:"
+    foreach ($g in $gpus) { Write-Host "    - $($g.Name)" }
+    $discrete = $gpus | Where-Object { $_.Name -notmatch 'Microsoft Basic|Radeon.*Graphics$' } | Select-Object -First 1
+    if ($discrete) { $gpu = $discrete.Name } else { $gpu = ($gpus | Select-Object -First 1).Name }
+    Write-Host "  Selected: '$gpu'"
     if ($gpu) { Write-Host "  Status: OK" -ForegroundColor Green } else { Write-Host "  Status: FAILED" -ForegroundColor Red }
 } catch {
     Write-Host "  Status: FAILED ($_)" -ForegroundColor Red
