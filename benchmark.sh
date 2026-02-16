@@ -171,8 +171,48 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Helper to get CPU model on Linux (works on both x86 and aarch64)
+get_linux_cpu() {
+    local cpu
+    cpu=$(grep 'model name' /proc/cpuinfo 2>/dev/null | head -1 | cut -d':' -f2 | xargs)
+    if [[ -z "$cpu" ]]; then
+        # aarch64 fallback: use lscpu
+        cpu=$(lscpu 2>/dev/null | grep 'Model name' | cut -d':' -f2 | xargs)
+    fi
+    if [[ -z "$cpu" ]]; then
+        cpu=$(uname -m)
+    fi
+    echo "$cpu"
+}
+
+# Check build dependencies on Linux (e.g. libssl-dev for openssl-sys)
+check_linux_build_deps() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        return
+    fi
+    local missing=()
+    if ! dpkg -s libssl-dev &>/dev/null 2>&1; then
+        missing+=(libssl-dev)
+    fi
+    if ! command -v pkg-config &>/dev/null; then
+        missing+=(pkg-config)
+    fi
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "Installing missing build dependencies: ${missing[*]}..."
+        if [[ $EUID -eq 0 ]]; then
+            apt-get update -qq && apt-get install -y -qq "${missing[@]}"
+        else
+            sudo apt-get update -qq && sudo apt-get install -y -qq "${missing[@]}"
+        fi
+        echo ""
+    fi
+}
+
 # Check power monitoring availability
 check_power_monitoring
+
+# Check and install Linux build dependencies (libssl-dev, pkg-config)
+check_linux_build_deps
 
 # Check if Rust is installed (also check common install location)
 check_rust_installed() {
@@ -257,7 +297,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 else
     echo "  Device: $(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || echo 'Unknown')"
     echo "  OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
-    echo "  CPU: $(cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | xargs)"
+    echo "  CPU: $(get_linux_cpu)"
     echo "  GPU: $(lspci 2>/dev/null | grep -i 'vga\|3d\|display' | head -1 | cut -d':' -f3 | xargs || echo 'Unknown')"
     echo "  Cores: $(nproc)"
     echo "  RAM: $(( $(cat /proc/meminfo | grep MemTotal | awk '{print $2}') / 1048576 )) GB"
@@ -379,7 +419,7 @@ $(if [[ "$OSTYPE" == "darwin"* ]]; then
 else
     echo "  Device: $(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || echo 'Unknown')"
     echo "  OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
-    echo "  CPU: $(cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | xargs)"
+    echo "  CPU: $(get_linux_cpu)"
     echo "  GPU: $(lspci 2>/dev/null | grep -i 'vga\|3d\|display' | head -1 | cut -d':' -f3 | xargs || echo 'Unknown')"
     echo "  Cores: $(nproc)"
     echo "  RAM: $(( $(cat /proc/meminfo | grep MemTotal | awk '{print $2}') / 1048576 )) GB"
@@ -424,7 +464,7 @@ send_results_to_endpoint() {
     else
         SYS_DEVICE="$(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || echo 'Unknown')"
         SYS_OS="$(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
-        SYS_CPU="$(cat /proc/cpuinfo | grep 'model name' | head -1 | cut -d':' -f2 | xargs)"
+        SYS_CPU="$(get_linux_cpu)"
         SYS_GPU="$(lspci 2>/dev/null | grep -i 'vga\|3d\|display' | head -1 | cut -d':' -f3 | xargs || echo 'Unknown')"
         SYS_CORES="$(nproc)"
         SYS_RAM="$(( $(cat /proc/meminfo | grep MemTotal | awk '{print $2}') / 1048576 ))"
