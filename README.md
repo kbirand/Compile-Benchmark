@@ -41,7 +41,7 @@ cargo --version
 
 **Windows (PowerShell):**
 ```powershell
-.\benchmark.ps1
+powershell -ExecutionPolicy Bypass -File .\benchmark.ps1
 ```
 
 **macOS/Linux:**

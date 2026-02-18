@@ -207,8 +207,9 @@ blocking = "1"
 # More HTTP/web
 ureq = { version = "2", features = ["json", "charset", "cookies", "gzip", "brotli"] }
 attohttpc = { version = "0.28", features = ["json", "compress"] }
-isahc = { version = "1", features = ["json", "cookies", "text-decoding"] }
-surf = "2"
+# isahc and surf removed - they require openssl/curl system libs
+hyper-rustls = "0.26"
+rustls-pemfile = "2"
 
 # Text processing
 pulldown-cmark = "0.10"
