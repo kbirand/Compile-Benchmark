@@ -1,6 +1,6 @@
 # Build artifacts
 /target/
-
+/fast-bench/
 # Cargo lock (optional for applications, include if you want reproducible builds)
 # Cargo.lock
 

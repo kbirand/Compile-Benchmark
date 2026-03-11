@@ -35,6 +35,12 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     [[ -n "$GPU" ]] && echo "  Status: OK" || echo "  Status: FAILED (may be integrated in CPU)"
     echo ""
 
+    echo "GPU Cores:"
+    GPU_CORES="$(system_profiler SPDisplaysDataType | grep 'Total Number of Cores' | cut -d':' -f2 | xargs)"
+    echo "  Value: '${GPU_CORES}'"
+    [[ -n "$GPU_CORES" ]] && echo "  Status: OK" || echo "  Status: FAILED"
+    echo ""
+
     echo "Cores:"
     CORES="$(sysctl -n hw.ncpu)"
     echo "  Value: '${CORES}'"
@@ -75,6 +81,22 @@ else
     [[ -n "$GPU" ]] && echo "  Status: OK" || echo "  Status: FAILED (lspci not available or no GPU)"
     echo ""
 
+    echo "GPU Cores:"
+    if command -v nvidia-smi &>/dev/null; then
+        GPU_CORES="$(nvidia-smi --query-gpu=count --format=csv,noheader,nounits 2>/dev/null | head -1)"
+        # Try CUDA cores via nvidia-settings or fallback
+        CUDA_CORES="$(nvidia-settings -q CUDACores -t 2>/dev/null | head -1)"
+        [[ -n "$CUDA_CORES" ]] && GPU_CORES="$CUDA_CORES"
+    elif [ -d /sys/class/drm/card0/device ]; then
+        # AMD GPUs expose compute units
+        GPU_CORES="$(cat /sys/class/drm/card0/device/pp_num_compute_units 2>/dev/null || echo '')"
+    else
+        GPU_CORES=""
+    fi
+    echo "  Value: '${GPU_CORES}'"
+    [[ -n "$GPU_CORES" ]] && echo "  Status: OK" || echo "  Status: FAILED (could not detect GPU cores)"
+    echo ""
+
     echo "Cores:"
     CORES="$(nproc)"
     echo "  Value: '${CORES}'"
@@ -98,6 +120,7 @@ cat <<EOJSON
     "os": "${OS}",
     "cpu": "${CPU}",
     "gpu": "${GPU}",
+    "gpu_cores": "${GPU_CORES:-N/A}",
     "cores": ${CORES},
     "ram_gb": ${RAM}
   }

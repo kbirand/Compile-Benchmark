@@ -1,0 +1,29 @@
+Fast Compile Benchmark Results (Endpoint Test)
+===============================================
+Date: 2026-03-11 15:22:38
+
+System:
+  Device: Mac Studio
+  OS: macOS 26.3
+  CPU: Apple M1 Ultra
+  GPU: Apple M1 Ultra
+  GPU Cores: 64
+  Cores: 20
+  RAM: 128 GB
+
+Rust:
+  rustc 1.93.1 (01f6ddf75 2026-02-11)
+  cargo 1.93.1 (083ac5135 2025-12-15)
+
+Results:
+  Debug Build:
+    Time:   23.735403000 seconds
+    Power:  N/A (avg)
+    Energy: N/A
+    
+  Release Build:
+    Time:   16.652867000 seconds
+    Power:  N/A (avg)
+    Energy: N/A
+
+Power Monitoring: Disabled (run with sudo)

@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-03-11T12:22:44Z",
+  "system": {
+    "device": "Mac Studio",
+    "os": "macOS 26.3",
+    "cpu": "Apple M1 Ultra",
+    "gpu": "Apple M1 Ultra",
+    "gpu_cores": "64",
+    "cores": 20,
+    "ram_gb": 128
+  },
+  "rust": {
+    "rustc": "rustc 1.93.1 (01f6ddf75 2026-02-11)",
+    "cargo": "cargo 1.93.1 (083ac5135 2025-12-15)"
+  },
+  "results": {
+    "debug": {
+      "time_seconds": 23.735403000,
+      "avg_power": "N/A",
+      "energy": "N/A"
+    },
+    "release": {
+      "time_seconds": 16.652867000,
+      "avg_power": "N/A",
+      "energy": "N/A"
+    }
+  },
+  "power_monitoring_enabled": false,
+  "benchmark_type": "fast"
+}

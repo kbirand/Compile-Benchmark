@@ -57,10 +57,39 @@ try {
     Write-Host "  All GPUs found:"
     foreach ($g in $gpus) { Write-Host "    - $($g.Name)" }
     $discrete = $gpus | Where-Object { $_.Name -notmatch 'Microsoft Basic|Radeon.*Graphics$' } | Select-Object -First 1
-    if ($discrete) { $gpu = $discrete.Name } else { $gpu = ($gpus | Select-Object -First 1).Name }
+    if ($discrete) { $selectedGpu = $discrete } else { $selectedGpu = $gpus | Select-Object -First 1 }
+    $gpu = $selectedGpu.Name
     Write-Host "  Selected: '$gpu'"
     if ($gpu) { Write-Host "  Status: OK" -ForegroundColor Green } else { Write-Host "  Status: FAILED" -ForegroundColor Red }
 } catch {
+    Write-Host "  Status: FAILED ($_)" -ForegroundColor Red
+}
+Write-Host ""
+
+# VRAM
+Write-Host "VRAM:" -ForegroundColor Yellow
+try {
+    $vramBytes = $selectedGpu.AdapterRAM
+    if ($vramBytes -and $vramBytes -gt 0) {
+        $vram = [math]::Round($vramBytes / 1GB)
+        Write-Host "  Raw AdapterRAM: $vramBytes bytes"
+    } else {
+        # AdapterRAM is a uint32 and overflows for GPUs > 4GB, try registry
+        $regPath = "HKLM:\SYSTEM\ControlSet001\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}"
+        $vram = 0
+        Get-ChildItem $regPath -ErrorAction SilentlyContinue | ForEach-Object {
+            $desc = (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue)."DriverDesc"
+            if ($desc -eq $gpu) {
+                $qwMem = (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue)."HardwareInformation.qwMemorySize"
+                if ($qwMem) { $vram = [math]::Round([int64]$qwMem / 1GB) }
+            }
+        }
+        Write-Host "  AdapterRAM overflowed, used registry: $vram GB"
+    }
+    Write-Host "  Value: '$vram GB'"
+    if ($vram -gt 0) { Write-Host "  Status: OK" -ForegroundColor Green } else { Write-Host "  Status: FAILED" -ForegroundColor Red }
+} catch {
+    $vram = 0
     Write-Host "  Status: FAILED ($_)" -ForegroundColor Red
 }
 Write-Host ""
@@ -97,6 +126,7 @@ $payload = @{
         os = $os
         cpu = $cpu
         gpu = $gpu
+        vram_gb = $vram
         cores = $cores
         ram_gb = $ram
     }

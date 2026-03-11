@@ -139,20 +139,22 @@ To change the endpoint, edit the URL in `benchmark-config.cfg` — both scripts 
 
 ### Payload
 
+**macOS/Linux payload:**
 ```json
 {
   "timestamp": "2026-02-16T16:00:00Z",
   "system": {
     "device": "Mac Studio",
-    "os": "macOS 15.3",
-    "cpu": "Apple M2 Pro",
-    "gpu": "Apple M2 Pro",
-    "cores": 12,
-    "ram_gb": 32
+    "os": "macOS 26.3",
+    "cpu": "Apple M1 Ultra",
+    "gpu": "Apple M1 Ultra",
+    "gpu_cores": "64",
+    "cores": 20,
+    "ram_gb": 128
   },
   "rust": {
-    "rustc": "rustc 1.84.1 (e71f9a9a9 2025-01-27)",
-    "cargo": "cargo 1.84.1 (66221abde 2025-01-22)"
+    "rustc": "rustc 1.93.1 (01f6ddf75 2026-02-11)",
+    "cargo": "cargo 1.93.1 (083ac5135 2025-12-15)"
   },
   "results": {
     "debug": {
@@ -170,7 +172,40 @@ To change the endpoint, edit the URL in `benchmark-config.cfg` — both scripts 
 }
 ```
 
-> **Note:** `avg_power` and `energy` will be `"N/A"` if power monitoring is not available or the script is not run with `sudo`.
+**Windows payload:**
+```json
+{
+  "timestamp": "2026-02-16T16:00:00Z",
+  "system": {
+    "device": "ASUS ProArt X670E-CREATOR WIFI",
+    "os": "Microsoft Windows NT 10.0.26100.0",
+    "cpu": "AMD Ryzen 9 7950X3D 16-Core Processor",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "vram_gb": 24,
+    "cores": 32,
+    "ram_gb": 63
+  },
+  "rust": {
+    "rustc": "rustc 1.93.1 (01f6ddf75 2026-02-11)",
+    "cargo": "cargo 1.93.1 (083ac5135 2025-12-15)"
+  },
+  "results": {
+    "debug": {
+      "time_seconds": 95.432,
+      "avg_power": "N/A",
+      "energy": "N/A"
+    },
+    "release": {
+      "time_seconds": 88.217,
+      "avg_power": "N/A",
+      "energy": "N/A"
+    }
+  },
+  "power_monitoring_enabled": false
+}
+```
+
+> **Note:** macOS/Linux sends `gpu_cores`, Windows sends `vram_gb`. `avg_power` and `energy` will be `"N/A"` if power monitoring is not available or the script is not run with `sudo`.
 
 ## License
 
